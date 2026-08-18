@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
+    <title>NYC — Aug 18–19</title>
+    <meta name="description" content="Two-day NYC itinerary: stops, timings, hard deadlines and a map." />
+    <meta name="theme-color" content="#0d1117" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="icon" href="icons/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="NYC Trip" />
+  </head>
+  <body>
+    <div id="gate" class="gate" hidden>
+      <form id="gate-form" class="gate-card" autocomplete="off">
+        <h1>NYC</h1>
+        <p>Enter the trip passcode.</p>
+        <input id="gate-input" type="password" inputmode="text" autocapitalize="none"
+               autocorrect="off" spellcheck="false" aria-label="Trip passcode" />
+        <button type="submit">Unlock</button>
+        <p id="gate-error" class="gate-error" role="alert"></p>
+      </form>
+    </div>
+
+    <div id="app" hidden>
+      <header class="topbar">
+        <div class="topbar-row">
+          <h1>NYC</h1>
+          <div class="clock" id="clock" aria-live="off"></div>
+        </div>
+        <nav class="tabs" id="tabs" role="tablist"></nav>
+      </header>
+
+      <main id="main">
+        <section id="banners" class="banners"></section>
+        <section id="map-wrap" class="map-wrap" hidden>
+          <div id="map"></div>
+        </section>
+        <ol id="stops" class="stops"></ol>
+        <div class="footer-note" id="progress"></div>
+      </main>
+
+      <div class="fabs">
+        <button id="toggle-map" class="fab" type="button" aria-pressed="false">🗺️ <span>Map</span></button>
+        <button id="install" class="fab fab-install" type="button" hidden>⬇️ <span>Install</span></button>
+      </div>
+
+      <div id="ios-tip" class="ios-tip" hidden>
+        <p>Add to Home Screen: tap <strong>Share</strong> <span aria-hidden="true">􀈂</span> then <strong>Add to Home Screen</strong>.</p>
+        <button type="button" id="ios-tip-close">Got it</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

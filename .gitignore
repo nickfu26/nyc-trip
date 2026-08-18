@@ -1,0 +1,7 @@
+node_modules
+dist
+.DS_Store
+*.local
+
+# plaintext itinerary stays local; only the encrypted blob is published
+src/itinerary.json
