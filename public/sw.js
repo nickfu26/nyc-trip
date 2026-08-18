@@ -1,5 +1,5 @@
 /* NYC trip PWA service worker — app shell + OSM tile caching. */
-const VERSION = 'v2'
+const VERSION = 'v3'
 const SHELL = `nyc-trip-shell-${VERSION}`
 const TILES = `nyc-trip-tiles-${VERSION}`
 const TILE_LIMIT = 400
@@ -57,6 +57,19 @@ async function tileFirst (request) {
   }
 }
 
+// The itinerary blob changes whenever the trip changes, so it must never be
+// served stale while online — cache is the offline fallback only.
+async function networkFirst (request) {
+  const cache = await caches.open(SHELL)
+  try {
+    const res = await fetch(request, { cache: 'no-store' })
+    if (res && res.ok) cache.put(request, res.clone())
+    return res
+  } catch (err) {
+    return (await cache.match(request)) || new Response('', { status: 504 })
+  }
+}
+
 async function staleWhileRevalidate (request) {
   const cache = await caches.open(SHELL)
   const hit = await cache.match(request)
@@ -96,6 +109,10 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.origin === self.location.origin) {
+    if (url.pathname.endsWith('/itinerary.enc.json')) {
+      event.respondWith(networkFirst(request))
+      return
+    }
     event.respondWith(staleWhileRevalidate(request))
   }
 })

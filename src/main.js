@@ -469,5 +469,14 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL })
       .catch(err => console.warn('SW registration failed', err))
+
+    // A newly activated worker means the shell changed under us — reload once
+    // so the app is never left running against the previous cache.
+    let reloading = false
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading) return
+      reloading = true
+      window.location.reload()
+    })
   })
 }
