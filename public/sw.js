@@ -1,8 +1,8 @@
 /* NYC trip PWA service worker — app shell + OSM tile caching. */
-const VERSION = 'v3'
+const VERSION = 'v4'
 const SHELL = `nyc-trip-shell-${VERSION}`
 const TILES = `nyc-trip-tiles-${VERSION}`
-const TILE_LIMIT = 400
+const TILE_LIMIT = 1500
 
 const scope = self.registration.scope // e.g. https://user.github.io/nyc-trip/
 const SHELL_URLS = [
