@@ -73,6 +73,85 @@ function openMaps (stop) {
   }, 900)
 }
 
+
+/* ---------- weather (Open-Meteo, no API key) ---------- */
+const WX_KEY = 'nyc-trip:wx'
+const WX_URL = 'https://api.open-meteo.com/v1/forecast' +
+  '?latitude=40.7580&longitude=-73.9855' +
+  '&hourly=temperature_2m,precipitation_probability,weather_code' +
+  '&temperature_unit=fahrenheit&timezone=America%2FNew_York&forecast_days=7'
+
+// { fetchedAt, hours: { '2026-08-18T13:00': { t, pop, code } } }
+let wx = (() => { try { return JSON.parse(localStorage.getItem(WX_KEY)) } catch { return null } })()
+
+// WMO weather codes -> one readable glyph.
+function wxIcon (code) {
+  if (code === 0) return '\u2600\uFE0F'
+  if (code <= 2) return '\u26C5'
+  if (code === 3) return '\u2601\uFE0F'
+  if (code <= 48) return '\uD83C\uDF2B\uFE0F'
+  if (code <= 57) return '\uD83C\uDF26\uFE0F'
+  if (code <= 67) return '\uD83C\uDF27\uFE0F'
+  if (code <= 77) return '\uD83C\uDF28\uFE0F'
+  if (code <= 82) return '\uD83C\uDF26\uFE0F'
+  if (code <= 86) return '\uD83C\uDF28\uFE0F'
+  return '\u26C8\uFE0F'
+}
+
+// Forecast for the hour a stop starts; null before the first fetch or past the
+// forecast horizon.
+function wxAt (day, stop) {
+  if (!wx || !wx.hours) return null
+  const d = stopDate(day, stop)
+  const key = day.date + 'T' + String(d.getHours()).padStart(2, '0') + ':00'
+  return wx.hours[key] || null
+}
+
+async function refreshWeather () {
+  if (wx && Date.now() - wx.fetchedAt < 45 * 60000) return false
+  try {
+    const res = await fetch(WX_URL, { cache: 'no-store' })
+    if (!res.ok) throw new Error('weather ' + res.status)
+    const data = await res.json()
+    const hours = {}
+    data.hourly.time.forEach((t, i) => {
+      hours[t] = {
+        t: Math.round(data.hourly.temperature_2m[i]),
+        pop: data.hourly.precipitation_probability[i],
+        code: data.hourly.weather_code[i]
+      }
+    })
+    wx = { fetchedAt: Date.now(), hours }
+    try { localStorage.setItem(WX_KEY, JSON.stringify(wx)) } catch {}
+    return true
+  } catch (err) {
+    console.warn('weather unavailable', err)   // last cached forecast keeps showing
+    return false
+  }
+}
+
+function renderWeatherStrip () {
+  const day = days[state.day]
+  const strip = document.getElementById('wx-strip')
+  const readings = day.stops.map(s => wxAt(day, s)).filter(Boolean)
+  if (!readings.length) {
+    strip.hidden = true
+    return
+  }
+  strip.hidden = false
+  const temps = readings.map(r => r.t)
+  const pop = Math.max(...readings.map(r => r.pop || 0))
+  const worst = readings.reduce((a, b) => (b.code > a.code ? b : a))
+  const mins = Math.round((Date.now() - wx.fetchedAt) / 60000)
+  const age = mins > 90
+    ? '<span class="wx-stale">' + (mins > 1440 ? Math.round(mins / 1440) + 'd' : mins + 'm') + ' old</span>'
+    : ''
+  strip.innerHTML =
+    '<span class="wx-ico">' + wxIcon(worst.code) + '</span>' +
+    '<span>' + Math.min(...temps) + '\u2013' + Math.max(...temps) + '\u00B0F</span>' +
+    '<span class="wx-pop">' + pop + '% rain</span>' + age
+}
+
 /* ---------- DOM ---------- */
 const el = {
   tabs: document.getElementById('tabs'),
@@ -166,8 +245,13 @@ function renderStops (now) {
 
     const body = document.createElement('div')
     body.className = 'stop-body'
+    const w = wxAt(day, s)
+    const chip = w
+      ? '<span class="wx-chip">' + wxIcon(w.code) + ' ' + w.t + '\u00B0' +
+        (w.pop >= 25 ? ' \u00B7 ' + w.pop + '%' : '') + '</span>'
+      : ''
     body.innerHTML =
-      `<div class="stop-time">${s.time}${s.deadline ? '<span class="hard">hard</span>' : ''}</div>`
+      `<div class="stop-time">${s.time}${s.deadline ? '<span class="hard">hard</span>' : ''}${chip}</div>`
 
     const name = document.createElement('button')
     name.type = 'button'
@@ -180,6 +264,17 @@ function renderStops (now) {
     note.className = 'stop-note'
     note.textContent = s.note
     body.appendChild(note)
+
+    if (s.transit) {
+      const leg = document.createElement('p')
+      leg.className = 'stop-transit'
+      const onFoot = /^(walk|taxi|arrive|breakfast)/i.test(s.transit)
+      const glyph = document.createElement('span')
+      glyph.setAttribute('aria-hidden', 'true')
+      glyph.textContent = onFoot ? '\uD83D\uDEB6' : '\uD83D\uDE87'
+      leg.append(glyph, ' ', s.transit)
+      body.appendChild(leg)
+    }
 
     li.append(box, idx, body)
     el.stops.appendChild(li)
@@ -197,6 +292,7 @@ function render () {
   const now = new Date()
   el.mapWrap.hidden = !state.map
   renderTabs()
+  renderWeatherStrip()
   renderBanners(now)
   renderStops(now)
   renderClock(now)
@@ -321,8 +417,15 @@ function start (itinerary) {
   document.getElementById('app').hidden = false
   render()
   if (state.map) drawMap()
+  const refresh = () => refreshWeather().then(updated => { if (updated) render() })
+  refresh()
   setInterval(render, 30000)
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) render() })
+  setInterval(refresh, 30 * 60000)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return
+    render()
+    refresh()
+  })
 }
 
 async function tryPasscode (passcode, { remember }) {

@@ -1,5 +1,5 @@
 /* NYC trip PWA service worker — app shell + OSM tile caching. */
-const VERSION = 'v1'
+const VERSION = 'v2'
 const SHELL = `nyc-trip-shell-${VERSION}`
 const TILES = `nyc-trip-tiles-${VERSION}`
 const TILE_LIMIT = 400
